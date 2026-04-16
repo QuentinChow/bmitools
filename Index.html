@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BMI 計算器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  </head>
+  <body class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+    <main class="w-full max-w-md">
+      <section id="captureTarget" class="relative bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+        <div
+          id="dateBar"
+          class="absolute top-4 right-4 rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold text-gray-700"
+          aria-label="日期"
+        >
+          <span id="dateText">--</span>
+        </div>
+        <header class="mb-6">
+          <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">BMI 計算器</h1>
+          <p class="mt-2 text-sm text-gray-600">輸入身高與體重，立即計算健康狀態。</p>
+        </header>
+
+        <form id="bmiForm" class="space-y-4" novalidate>
+          <div>
+            <label for="heightCm" class="block text-sm font-medium text-gray-800">身高（cm）</label>
+            <input
+              id="heightCm"
+              name="heightCm"
+              type="text"
+              inputmode="decimal"
+              placeholder="例如：170.5"
+              class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-200"
+              autocomplete="off"
+            />
+          </div>
+
+          <div>
+            <label for="weightKg" class="block text-sm font-medium text-gray-800">體重（kg）</label>
+            <input
+              id="weightKg"
+              name="weightKg"
+              type="text"
+              inputmode="decimal"
+              placeholder="例如：65.2"
+              class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-200"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="pt-2">
+            <button
+              id="calcBtn"
+              type="submit"
+              class="w-full rounded-lg bg-blue-600 px-4 py-3 text-white font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 focus:outline-none transition-colors flex items-center justify-between gap-2"
+            >
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                <i class="fa-solid fa-tablet-screen-button" aria-hidden="true"></i>
+              </div>
+              <span class="flex-1 text-center">計算 BMI</span>
+              <i class="fa-solid fa-calculator" aria-hidden="true"></i>
+            </button>
+          </div>
+
+          <div class="pt-2">
+            <button
+              id="captureBtn"
+              type="button"
+              class="w-full rounded-lg bg-gray-100 px-4 py-3 text-gray-900 font-semibold hover:bg-gray-200 focus:ring-4 focus:ring-blue-200 focus:outline-none transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              <i class="fa-solid fa-camera" aria-hidden="true"></i>
+              <span>截圖</span>
+            </button>
+          </div>
+
+          <div
+            id="errorMsg"
+            class="hidden text-sm font-medium text-red-600"
+            role="alert"
+            aria-live="polite"
+          ></div>
+
+          <div
+            id="captureStatus"
+            class="hidden mt-2 text-sm font-medium text-gray-700"
+            aria-live="polite"
+          ></div>
+        </form>
+
+        <section
+          id="resultBox"
+          class="mt-6 hidden rounded-xl bg-gray-50 border border-gray-200 p-4"
+          aria-live="polite"
+        >
+          <div class="flex items-start gap-3">
+            <div class="mt-0.5 h-3 w-3 rounded-full bg-blue-600"></div>
+            <div class="min-w-0">
+              <div class="text-sm text-gray-600">你的 BMI</div>
+              <div class="text-3xl font-bold text-gray-900">
+                <span id="bmiValue">--</span>
+                <span class="text-base font-semibold text-gray-700">BMI</span>
+              </div>
+              <div class="mt-2 text-sm font-medium text-gray-800">
+                健康狀態評估：<span id="bmiStatus">--</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <p class="mt-4 text-xs text-center text-gray-500">
+        BMI = 體重（kg）/（身高（m）的平方）
+      </p>
+    </main>
+
+    <script>
+      const form = document.getElementById("bmiForm");
+      const heightEl = document.getElementById("heightCm");
+      const weightEl = document.getElementById("weightKg");
+      const errorEl = document.getElementById("errorMsg");
+      const resultBox = document.getElementById("resultBox");
+      const bmiValueEl = document.getElementById("bmiValue");
+      const bmiStatusEl = document.getElementById("bmiStatus");
+      const captureBtn = document.getElementById("captureBtn");
+      const captureTarget = document.getElementById("captureTarget");
+      const captureStatusEl = document.getElementById("captureStatus");
+      const dateTextEl = document.getElementById("dateText");
+
+      function setDateBar() {
+        if (!dateTextEl) return;
+        const now = new Date();
+        // 使用亞洲/台北時區，避免不同地區造成日期差異。
+        const formatted = now.toLocaleDateString("zh-TW", {
+          timeZone: "Asia/Taipei",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        });
+        dateTextEl.textContent = formatted;
+      }
+
+      setDateBar();
+
+      function showError(message) {
+        errorEl.textContent = message;
+        errorEl.classList.remove("hidden");
+        resultBox.classList.add("hidden");
+      }
+
+      function clearError() {
+        errorEl.textContent = "";
+        errorEl.classList.add("hidden");
+        if (captureStatusEl) {
+          captureStatusEl.textContent = "";
+          captureStatusEl.classList.add("hidden");
+        }
+      }
+
+      function showCaptureError(message) {
+        errorEl.textContent = message;
+        errorEl.classList.remove("hidden");
+      }
+
+      function setCaptureStatus(message, tone) {
+        if (!captureStatusEl) return;
+        captureStatusEl.textContent = message;
+        captureStatusEl.classList.remove("hidden", "text-gray-700", "text-green-700");
+        captureStatusEl.classList.add(tone === "green" ? "text-green-700" : "text-gray-700");
+      }
+
+      function parsePositiveNumber(input) {
+        if (input === null || input === undefined) return NaN;
+        const raw = String(input).trim();
+        if (!raw) return NaN;
+
+        // 允許小數（支援 ',' 或 '.' 作為小數點），並拒絕其他字元。
+        const normalized = raw.replace(",", ".");
+        if (!/^[0-9]+(\.[0-9]+)?$/.test(normalized)) return NaN;
+
+        const num = Number(normalized);
+        return num > 0 ? num : NaN;
+      }
+
+      function getBmiStatus(bmi) {
+        if (bmi < 18.5) return "體重過輕";
+        if (bmi < 24.9) return "正常";
+        if (bmi < 29.9) return "過重";
+        return "肥胖";
+      }
+
+      function calculateBmi() {
+        clearError();
+
+        const heightCm = parsePositiveNumber(heightEl.value);
+        if (!Number.isFinite(heightCm)) {
+          return showError("請輸入有效的身高（cm），且需為大於 0 的數字。");
+        }
+
+        const weightKg = parsePositiveNumber(weightEl.value);
+        if (!Number.isFinite(weightKg)) {
+          return showError("請輸入有效的體重（kg），且需為大於 0 的數字。");
+        }
+
+        const heightM = heightCm / 100;
+        const bmi = weightKg / (heightM * heightM);
+
+        if (!Number.isFinite(bmi)) {
+          return showError("計算失敗，請確認輸入數值是否正確。");
+        }
+
+        const bmiOneDecimal = bmi.toFixed(1);
+        bmiValueEl.textContent = bmiOneDecimal;
+        bmiStatusEl.textContent = getBmiStatus(bmi);
+        resultBox.classList.remove("hidden");
+      }
+
+      async function handleCapture() {
+        clearError();
+        if (!captureTarget) {
+          return showCaptureError("找不到要截圖的內容。");
+        }
+        if (typeof window.html2canvas !== "function") {
+          return showCaptureError("截圖套件未載入，請稍後再試。");
+        }
+
+        captureBtn.disabled = true;
+        setCaptureStatus("截圖中，請稍候...", "gray");
+
+        try {
+          const scale = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+          const canvas = await window.html2canvas(captureTarget, {
+            backgroundColor: "#ffffff",
+            scale,
+          });
+
+          const link = document.createElement("a");
+          link.href = canvas.toDataURL("image/png");
+          link.download = `bmi-capture-${new Date()
+            .toISOString()
+            .replace(/[:.]/g, "-")}.png`;
+          link.click();
+
+          setCaptureStatus("截圖已下載完成", "green");
+        } catch (err) {
+          showCaptureError("截圖失敗，請再試一次。");
+          setCaptureStatus("", "gray");
+        } finally {
+          captureBtn.disabled = false;
+        }
+      }
+
+      captureBtn.addEventListener("click", handleCapture);
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        calculateBmi();
+      });
+    </script>
+  </body>
+</html>
